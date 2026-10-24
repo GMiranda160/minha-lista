@@ -132,7 +132,7 @@ export function getAllCycles(state: AppState): Cycle[] {
             cycle.items.push({
                 productId: product.id,
                 productName: product.name,
-                category: product.category,
+                categoryId: product.categoryId,
                 quantity: purchase.quantity,
             });
         });

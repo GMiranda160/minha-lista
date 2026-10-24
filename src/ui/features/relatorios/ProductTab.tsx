@@ -2,12 +2,14 @@
 
 import { ArrowLeft, ChartLine, Check, Clock, RefreshCw, Search, Weight, X } from 'lucide-react';
 import { useState } from 'react';
-import { CATEGORIES, CATEGORY_COLORS, PATTERN_TYPE_LABELS } from '@/domain/constants';
+import { categoryOf } from '@/domain/categories';
+import { PATTERN_TYPE_LABELS } from '@/domain/constants';
 import { scoreContext } from '@/domain/recommendations';
 import { getProductDetail, getProductSummaries, type PatternStatus } from '@/domain/reports';
 import { findProduct } from '@/domain/state';
 import { formatDate } from '@/domain/text';
 import type { AppState, Product } from '@/domain/types';
+import { CategoryTag } from '@/ui/components/CategoryTag';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { ReportCard, StatCard } from '@/ui/components/StatCard';
 
@@ -42,7 +44,7 @@ export function ProductTab({ state }: { state: AppState }) {
                     </span>
                     <span className="summary-name">{p.name}</span>
                     <span className="summary-category">
-                        <span style={{ color: CATEGORY_COLORS[p.category] }}>●</span> {CATEGORIES[p.category]}
+                        <CategoryTag category={categoryOf(state, p)} />
                     </span>
                     <span className="summary-stats"><RefreshCw size={10} /> {freqPct}% · {p.pattern.appearCount}x</span>
                     <span className="bar"><span className="bar-fill" style={{ width: `${freqPct}%` }} /></span>

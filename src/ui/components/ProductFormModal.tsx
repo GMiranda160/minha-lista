@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { CATEGORIES, CATEGORY_KEYS } from '@/domain/constants';
-import type { ProductInput } from '@/domain/types';
+import type { Category, ProductInput } from '@/domain/types';
 import { Modal } from './Modal';
 
 interface ProductFormModalProps {
     title: string;
+    categories: Category[];
     initial?: Partial<ProductInput>;
     /** Retorna uma mensagem de erro para exibir no formulário, se houver. */
     onSubmit: (input: ProductInput) => Promise<string | void> | string | void;
@@ -14,19 +14,19 @@ interface ProductFormModalProps {
 }
 
 /** Formulário de cadastro e edição de produto (catálogo e importação de ciclo). */
-export function ProductFormModal({ title, initial, onSubmit, onClose }: ProductFormModalProps) {
+export function ProductFormModal({ title, categories, initial, onSubmit, onClose }: ProductFormModalProps) {
     const [name, setName] = useState(initial?.name ?? '');
     const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? '');
-    const [category, setCategory] = useState(initial?.category ?? 'geladeira');
+    const [categoryId, setCategoryId] = useState(initial?.categoryId ?? categories[0]?.id);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
 
     async function handleSubmit(event: FormEvent) {
         event.preventDefault();
-        if (!name.trim() || busy) return;
+        if (!name.trim() || categoryId === undefined || busy) return;
         setBusy(true);
         try {
-            setError((await onSubmit({ name: name.trim(), imageUrl: imageUrl.trim(), category })) || '');
+            setError((await onSubmit({ name: name.trim(), imageUrl: imageUrl.trim(), categoryId })) || '');
         } finally {
             setBusy(false);
         }
@@ -45,8 +45,8 @@ export function ProductFormModal({ title, initial, onSubmit, onClose }: ProductF
                 </label>
                 <label className="form-field">
                     <span>Categoria</span>
-                    <select value={category} onChange={e => setCategory(e.target.value as ProductInput['category'])}>
-                        {CATEGORY_KEYS.map(key => <option key={key} value={key}>{CATEGORIES[key]}</option>)}
+                    <select value={categoryId} onChange={e => setCategoryId(Number(e.target.value))}>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </label>
                 {error && <p className="form-error">{error}</p>}

@@ -2,14 +2,14 @@
 
 /* =================================================================
    Ações do servidor chamadas pelas telas: carregar, salvar,
-   cadastrar produto e restaurar backup.
+   cadastrar produto ou categoria e restaurar backup.
    ================================================================= */
 
-import { applyChanges, importBackup, insertProduct, loadState } from '@/data/stateRepository';
+import { applyChanges, importBackup, insertCategory, insertProduct, loadState } from '@/data/stateRepository';
 import { parseBackup } from '@/domain/backup';
 import type { Changeset } from '@/domain/changes';
-import { isCategory } from '@/domain/constants';
-import type { AppState, Product, ProductInput } from '@/domain/types';
+import { CATEGORY_COLORS, CATEGORY_ICONS, CATEGORY_NAME_MAX } from '@/domain/constants';
+import type { AppState, Category, CategoryInput, Product, ProductInput } from '@/domain/types';
 import { runAction, type ActionResult } from './result';
 import { requireUserDb } from './session';
 
@@ -25,9 +25,24 @@ export async function createProduct(input: ProductInput): Promise<ActionResult<P
     return runAction(async () => {
         const name = input.name?.trim();
         if (!name) throw new Error('Informe o nome do produto.');
-        const category = isCategory(input.category) ? input.category : 'outros';
+        if (!Number.isInteger(input.categoryId)) throw new Error('Escolha uma categoria.');
         const { db } = await requireUserDb();
-        return insertProduct(db, { name, imageUrl: input.imageUrl?.trim() ?? '', category });
+        return insertProduct(db, { name, imageUrl: input.imageUrl?.trim() ?? '', categoryId: input.categoryId });
+    });
+}
+
+/** O nome repetido é barrado pelo banco (índice único por usuário). */
+export async function createCategory(input: CategoryInput & { position: number }): Promise<ActionResult<Category>> {
+    return runAction(async () => {
+        const name = input.name?.trim();
+        if (!name || name.length > CATEGORY_NAME_MAX) throw new Error(`Informe um nome de até ${CATEGORY_NAME_MAX} caracteres.`);
+        const { db } = await requireUserDb();
+        return insertCategory(db, {
+            name,
+            color: CATEGORY_COLORS.includes(input.color) ? input.color : CATEGORY_COLORS[0],
+            icon: (CATEGORY_ICONS as readonly string[]).includes(input.icon) ? input.icon : 'tag',
+            position: Number.isInteger(input.position) ? input.position : 0,
+        });
     });
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { ChartColumn, CircleCheck, ClipboardCheck, Hourglass, ListChecks, WandSparkles } from 'lucide-react';
+import { categoryOf } from '@/domain/categories';
 import { MIN_LISTS_FOR_RECOMMENDATION } from '@/domain/constants';
 import { generateRecommendations, hasEnoughData, type Recommendation } from '@/domain/recommendations';
 import type { AppState } from '@/domain/types';
@@ -67,17 +68,17 @@ export function RecommendationModal({ state, onApply, onClose }: RecommendationM
                 )}
             </div>
             <div className="rec-list">
-                {established.map(r => <RecommendationRow key={r.product.id} rec={r} kind="established" />)}
-                {learning.map(r => <RecommendationRow key={r.product.id} rec={r} kind="learning" />)}
+                {established.map(r => <RecommendationRow key={r.product.id} rec={r} icon={categoryOf(state, r.product).icon} kind="established" />)}
+                {learning.map(r => <RecommendationRow key={r.product.id} rec={r} icon={categoryOf(state, r.product).icon} kind="learning" />)}
             </div>
         </Modal>
     );
 }
 
-function RecommendationRow({ rec, kind }: { rec: Recommendation; kind: 'established' | 'learning' }) {
+function RecommendationRow({ rec, icon, kind }: { rec: Recommendation; icon: string; kind: 'established' | 'learning' }) {
     return (
         <div className="rec-item">
-            <span className={`rec-icon ${kind}`}><CategoryIcon category={rec.product.category} /></span>
+            <span className={`rec-icon ${kind}`}><CategoryIcon icon={icon} /></span>
             <div className="rec-info">
                 <div className="rec-name">
                     {rec.product.name}

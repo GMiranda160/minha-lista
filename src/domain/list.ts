@@ -2,7 +2,7 @@
    Lista atual: seleção, quantidades, filtros e ordenação.
    ================================================================= */
 
-import { CATEGORY_KEYS } from './constants';
+import { categoryOf } from './categories';
 import { calculateScore } from './pattern';
 import { scoreContext } from './recommendations';
 import { findProduct, produce } from './state';
@@ -13,6 +13,24 @@ export interface CategoryGroup {
     category: Category;
     products: Product[];
 }
+
+/**
+ * Agrupa produtos na ordem das categorias. Produtos cuja categoria não existe
+ * mais aparecem no fim, em "Sem categoria". Grupos vazios são omitidos.
+ */
+function groupByCategory(state: AppState, products: Product[], compare: (a: Product, b: Product) => number): CategoryGroup[] {
+    const groups = new Map<number, CategoryGroup>(state.categories.map(c => [c.id, { category: c, products: [] }]));
+    products.forEach(product => {
+        const category = categoryOf(state, product);
+        if (!groups.has(category.id)) groups.set(category.id, { category, products: [] });
+        groups.get(category.id)!.products.push(product);
+    });
+    return [...groups.values()]
+        .filter(group => group.products.length > 0)
+        .map(group => ({ ...group, products: group.products.sort(compare) }));
+}
+
+const byName = (a: Product, b: Product) => compareNames(a.name, b.name);
 
 /** Produtos visíveis que batem com a busca, agrupados por categoria e ordenados. */
 export function groupVisibleProducts(state: AppState, searchTerm: string, now = new Date()): CategoryGroup[] {
@@ -25,16 +43,14 @@ export function groupVisibleProducts(state: AppState, searchTerm: string, now = 
     };
     const compare = state.sortMode === 'frequency'
         ? (a: Product, b: Product) => (scoreOf(b) - scoreOf(a)) * dir || compareNames(a.name, b.name)
-        : (a: Product, b: Product) => compareNames(a.name, b.name) * dir;
+        : (a: Product, b: Product) => byName(a, b) * dir;
 
     const visible = state.products.filter(p => p.visible && matchesSearch(p.name, searchTerm));
-    return CATEGORY_KEYS
-        .map(category => ({ category, products: visible.filter(p => p.category === category).sort(compare) }))
-        .filter(group => group.products.length > 0);
+    return groupByCategory(state, visible, compare);
 }
 
 export function selectedProducts(state: AppState): Product[] {
-    return state.products.filter(p => p.selected).sort((a, b) => compareNames(a.name, b.name));
+    return state.products.filter(p => p.selected).sort(byName);
 }
 
 export function selectedListItems(state: AppState): ListItem[] {
@@ -92,10 +108,16 @@ export function changeSort(state: AppState, mode: SortMode): AppState {
    CATÁLOGO
    ------------------------------------------------------------- */
 
-export function filterCatalog(state: AppState, searchTerm: string, category: Category | 'all'): Product[] {
-    return state.products
-        .filter(p => (category === 'all' || p.category === category) && matchesSearch(p.name, searchTerm))
-        .sort((a, b) => compareNames(a.name, b.name));
+/** Catálogo inteiro (inclusive ocultos) filtrado e agrupado por categoria. */
+export function groupCatalog(state: AppState, searchTerm: string, categoryId: number | 'all'): CategoryGroup[] {
+    const filtered = state.products.filter(p =>
+        (categoryId === 'all' || p.categoryId === categoryId) && matchesSearch(p.name, searchTerm));
+    return groupByCategory(state, filtered, byName);
+}
+
+/** Inclui um produto já criado no servidor (com id definitivo). */
+export function addProduct(state: AppState, product: Product): AppState {
+    return produce(state, draft => { draft.products.push(product); });
 }
 
 export function updateProduct(state: AppState, productId: number, input: ProductInput): AppState {

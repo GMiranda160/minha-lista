@@ -3,7 +3,7 @@
    estado, este módulo descobre o que mudou e só isso vai ao banco.
    ================================================================= */
 
-import type { AppState, Product, Purchase, SortDirection, SortMode } from './types';
+import type { AppState, Category, Product, Purchase, SortDirection, SortMode } from './types';
 
 export type ProductFields = Omit<Product, 'history'>;
 
@@ -13,6 +13,8 @@ export interface PurchaseRef {
 }
 
 export interface Changeset {
+    deletedCategoryIds: number[];
+    categories: Category[];
     deletedProductIds: number[];
     products: ProductFields[];
     deletedPurchases: PurchaseRef[];
@@ -40,18 +42,26 @@ function purchaseMap(state: AppState) {
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+/** Registros removidos e alterados entre duas listas com id (itens novos já foram gravados). */
+function diffById<T extends { id: number }, F>(before: T[], after: T[], fields: (item: T) => F) {
+    const beforeById = new Map(before.map(item => [item.id, item]));
+    const afterIds = new Set(after.map(item => item.id));
+    return {
+        deleted: before.filter(item => !afterIds.has(item.id)).map(item => item.id),
+        changed: after
+            .filter(item => {
+                const previous = beforeById.get(item.id);
+                return previous && !same(fields(previous), fields(item));
+            })
+            .map(fields),
+    };
+}
+
 /** Retorna null quando nada precisa ser gravado. */
 export function diffState(before: AppState, after: AppState): Changeset | null {
-    const beforeById = new Map(before.products.map(p => [p.id, p]));
+    const categoryDiff = diffById(before.categories, after.categories, c => c);
+    const productDiff = diffById(before.products, after.products, fieldsOf);
     const afterIds = new Set(after.products.map(p => p.id));
-
-    const deletedProductIds = before.products.filter(p => !afterIds.has(p.id)).map(p => p.id);
-    const products = after.products
-        .filter(p => {
-            const previous = beforeById.get(p.id);
-            return previous && !same(fieldsOf(previous), fieldsOf(p));
-        })
-        .map(fieldsOf);
 
     const oldPurchases = purchaseMap(before);
     const newPurchases = purchaseMap(after);
@@ -64,7 +74,15 @@ export function diffState(before: AppState, after: AppState): Changeset | null {
 
     const settings = same(settingsOf(before), settingsOf(after)) ? null : settingsOf(after);
 
-    const empty = !deletedProductIds.length && !products.length && !deletedPurchases.length &&
-        !upsertedPurchases.length && !settings;
-    return empty ? null : { deletedProductIds, products, deletedPurchases, upsertedPurchases, settings };
+    const changes: Changeset = {
+        deletedCategoryIds: categoryDiff.deleted,
+        categories: categoryDiff.changed,
+        deletedProductIds: productDiff.deleted,
+        products: productDiff.changed,
+        deletedPurchases,
+        upsertedPurchases,
+        settings,
+    };
+    const empty = Object.values(changes).every(value => value === null || (Array.isArray(value) && value.length === 0));
+    return empty ? null : changes;
 }

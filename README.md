@@ -4,10 +4,11 @@ Lista de compras inteligente que aprende com os seus hábitos. Você monta a lis
 
 ## Funcionalidades
 
-- **Minha Lista**: catálogo em cartões por categoria, busca sem acentos, ordenação alfabética ou por frequência, seleção com quantidade e uma "notinha" com os itens escolhidos.
+- **Minha Lista**: produtos agrupados em cartões de categoria retráteis (o aparelho lembra quais estão recolhidos), busca sem acentos, ordenação alfabética ou por frequência, seleção com quantidade e uma "notinha" com os itens escolhidos.
 - **Recomendações**: produtos com padrão consolidado ("Garantidos") e produtos ainda em aprendizado, com quantidade sugerida pela mediana das últimas compras.
 - **Impressão**: abre a lista em A4 paisagem, em colunas, ajustando fonte e número de colunas para caber em uma folha. Ao confirmar, a lista vira um novo ciclo.
-- **Catálogo**: cadastrar, editar, excluir e ocultar produtos (produto oculto sai da lista e congela o padrão).
+- **Catálogo**: cadastrar, editar, excluir e ocultar produtos (produto oculto sai da lista e congela o padrão), agrupados nos mesmos cartões de categoria.
+- **Categorias**: botão **Categorias** no catálogo para cadastrar, editar (nome, cor e ícone) e remover. Ao remover uma categoria com produtos, você escolhe para qual categoria eles vão. Toda conta nova começa com 6 categorias padrão.
 - **Relatórios**: visão anual e mensal, análise por produto, tabela técnica do motor de recomendação e gerenciador de ciclos (editar, excluir com renumeração, reimprimir, exportar e importar um ciclo).
 - **Conta e backup**: login por usuário e senha (Supabase Auth), sem cadastro aberto. Cada usuário só acessa os próprios dados. Exportar e importar backup em JSON, inclusive o `lista.json` do antigo app desktop.
 
@@ -68,10 +69,12 @@ Estas regras valem para todo código e texto deste repositório.
 
 ### Banco de dados
 
-- `products`: catálogo do usuário, estado da lista atual (`selected`, `quantity`) e o padrão de compra calculado (`pattern`, JSONB).
+- `categories`: categorias do usuário (`name`, `color`, `icon`, `position`). O nome é único por usuário, sem diferenciar maiúsculas.
+- `products`: catálogo do usuário, categoria (`category_id`), estado da lista atual (`selected`, `quantity`) e o padrão de compra calculado (`pattern`, JSONB).
 - `purchases`: histórico; uma linha por produto comprado em um ciclo (`product_id`, `cycle`, `date`, `quantity`).
 - `user_settings`: contador de ciclos, último decaimento e preferência de ordenação.
 - Funções: `apply_changes` (grava diferenças em uma transação) e `import_backup` (restaura um backup completo).
+- Gatilho `on_auth_user_created`: cria as categorias padrão para cada conta nova.
 
 Todas as tabelas têm RLS: cada linha pertence a `auth.uid()`.
 
@@ -99,7 +102,7 @@ tests/                 Testes do domínio (Vitest)
 ### 1. Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. Em **SQL Editor**, rode o arquivo `supabase/migrations/20261024000000_init.sql` (ou use `supabase db push` com a CLI).
+2. Em **SQL Editor**, rode **todos** os arquivos de `supabase/migrations`, um por vez, **em ordem de nome** (ou use `supabase db push` com a CLI). Cada arquivo roda uma única vez por banco: ao atualizar o app, rode só os arquivos novos.
 3. Em **Authentication > URL Configuration**, configure:
    - **Site URL**: a URL de produção (ex.: `https://minha-lista.vercel.app`).
    - **Redirect URLs**: `http://localhost:3000/auth/confirm` e `https://SEU-DOMINIO/auth/confirm`.

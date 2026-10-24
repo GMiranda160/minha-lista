@@ -1,15 +1,18 @@
 /* Conversão entre linhas do banco (snake_case) e objetos do domínio. */
 
 import { normalizeProduct } from '@/domain/state';
-import type { AppState, Product, PurchasePattern, SortDirection, SortMode } from '@/domain/types';
-import type { Backup } from '@/domain/backup';
+import type { AppState, Category, Product, PurchasePattern, SortDirection, SortMode } from '@/domain/types';
+import type { BackupContent } from '@/domain/backup';
 import type { Changeset, ProductFields } from '@/domain/changes';
+
+/** Mesmos campos do domínio (nenhum precisa de conversão). */
+export type CategoryRow = Category;
 
 export interface ProductRow {
     id: number;
     name: string;
     image_url: string;
-    category: string;
+    category_id: number;
     visible: boolean;
     selected: boolean;
     quantity: number;
@@ -35,7 +38,7 @@ export function toProductRow(p: ProductFields): ProductRow {
         id: p.id,
         name: p.name,
         image_url: p.imageUrl,
-        category: p.category,
+        category_id: p.categoryId,
         visible: p.visible,
         selected: p.selected,
         quantity: p.quantity,
@@ -43,7 +46,12 @@ export function toProductRow(p: ProductFields): ProductRow {
     };
 }
 
-export function toAppState(products: ProductRow[], purchases: PurchaseRow[], settings: SettingsRow | null): AppState {
+export function toAppState(
+    categories: CategoryRow[],
+    products: ProductRow[],
+    purchases: PurchaseRow[],
+    settings: SettingsRow | null,
+): AppState {
     const historyByProduct = new Map<number, PurchaseRow[]>();
     purchases.forEach(row => {
         const list = historyByProduct.get(row.product_id) ?? [];
@@ -52,6 +60,7 @@ export function toAppState(products: ProductRow[], purchases: PurchaseRow[], set
     });
 
     return {
+        categories,
         products: products.map(row => fromProductRow(row, historyByProduct.get(row.id) ?? [])),
         totalCycles: settings?.total_cycles ?? 0,
         lastDecayCheck: settings?.last_decay_check ?? 0,
@@ -65,7 +74,7 @@ export function fromProductRow(row: ProductRow, purchases: PurchaseRow[] = []): 
         id: row.id,
         name: row.name,
         imageUrl: row.image_url,
-        category: row.category as Product['category'],
+        categoryId: row.category_id,
         visible: row.visible,
         selected: row.selected,
         quantity: row.quantity,
@@ -77,6 +86,8 @@ export function fromProductRow(row: ProductRow, purchases: PurchaseRow[] = []): 
 /** Formato JSON esperado pela função apply_changes do banco. */
 export function toChangesPayload(changes: Changeset) {
     const payload: Record<string, unknown> = {};
+    if (changes.deletedCategoryIds.length) payload.deleted_categories = changes.deletedCategoryIds;
+    if (changes.categories.length) payload.categories = changes.categories;
     if (changes.deletedProductIds.length) payload.deleted_products = changes.deletedProductIds;
     if (changes.products.length) payload.products = changes.products.map(toProductRow);
     if (changes.deletedPurchases.length) {
@@ -99,13 +110,16 @@ export function toChangesPayload(changes: Changeset) {
 }
 
 /** Formato JSON esperado pela função import_backup do banco. */
-export function toBackupPayload(backup: Pick<Backup, 'products'>) {
-    return backup.products.map(p => ({
-        name: p.name,
-        image_url: p.imageUrl,
-        category: p.category,
-        visible: p.visible,
-        pattern: p.pattern,
-        history: p.history,
-    }));
+export function toBackupPayload(backup: Pick<BackupContent, 'categories' | 'products'>) {
+    return {
+        p_categories: backup.categories,
+        p_products: backup.products.map(p => ({
+            name: p.name,
+            image_url: p.imageUrl,
+            category: p.category,
+            visible: p.visible,
+            pattern: p.pattern,
+            history: p.history,
+        })),
+    };
 }

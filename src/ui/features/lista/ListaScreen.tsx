@@ -2,13 +2,13 @@
 
 import { ArrowDownAZ, ArrowUpZA, ChartColumn, PackageOpen, WandSparkles } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { CATEGORIES } from '@/domain/constants';
 import { registerList } from '@/domain/cycles';
 import {
     changeSort, clearSelection, groupVisibleProducts, selectedListItems, selectedProducts, setQuantity, toggleSelection,
 } from '@/domain/list';
 import { applyRecommendations, recommendedIds } from '@/domain/recommendations';
 import { formatDate, plural, toIsoDate } from '@/domain/text';
+import { CategoryGroups } from '@/ui/components/CategoryGroups';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { PageHeader } from '@/ui/components/PageHeader';
 import { PrintPreviewModal } from '@/ui/components/PrintPreviewModal';
@@ -83,24 +83,25 @@ export function ListaScreen() {
                     <EmptyState icon={PackageOpen} title="Nenhum produto encontrado.">
                         Limpe a pesquisa ou cadastre um novo produto no catálogo.
                     </EmptyState>
-                ) : groups.map(group => (
-                    <section key={group.category} className="category-section">
-                        <h3 className="category-title">{CATEGORIES[group.category]}</h3>
-                        <div className="product-grid">
-                            {group.products.map(product => (
-                                <ProductCard
-                                    key={product.id}
-                                    product={product}
-                                    showFrequency={!isAlpha}
-                                    recommended={recommended.has(product.id)}
-                                    recent={product.pattern.lastPurchaseListIndex > 0 && product.pattern.lastPurchaseListIndex === state.totalCycles}
-                                    onToggle={toggle}
-                                    onQuantity={changeQuantity}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                ))}
+                ) : (
+                    <CategoryGroups
+                        groups={groups}
+                        storageKey="lista.categorias-recolhidas"
+                        forceOpen={!!search.trim()}
+                        gridClassName="product-grid"
+                        renderProduct={product => (
+                            <ProductCard
+                                key={product.id}
+                                product={product}
+                                showFrequency={!isAlpha}
+                                recommended={recommended.has(product.id)}
+                                recent={product.pattern.lastPurchaseListIndex > 0 && product.pattern.lastPurchaseListIndex === state.totalCycles}
+                                onToggle={toggle}
+                                onQuantity={changeQuantity}
+                            />
+                        )}
+                    />
+                )}
             </section>
 
             <ReceiptPanel

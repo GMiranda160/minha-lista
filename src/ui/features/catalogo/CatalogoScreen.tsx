@@ -1,17 +1,19 @@
 'use client';
 
-import { Eye, EyeOff, PackageOpen, Pencil, Plus, ShoppingBasket, Trash } from 'lucide-react';
+import { Eye, EyeOff, Layers, PackageOpen, Pencil, Plus, ShoppingBasket, Trash } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { CATEGORIES, CATEGORY_KEYS, PATTERN_TYPE_LABELS } from '@/domain/constants';
-import { filterCatalog, removeProduct, toggleVisibility, updateProduct } from '@/domain/list';
-import type { Category, Product, ProductInput } from '@/domain/types';
+import { PATTERN_TYPE_LABELS } from '@/domain/constants';
+import { addProduct, groupCatalog, removeProduct, toggleVisibility, updateProduct } from '@/domain/list';
+import type { Product, ProductInput } from '@/domain/types';
 import { createProduct } from '@/services/stateActions';
+import { CategoryGroups } from '@/ui/components/CategoryGroups';
 import { ConfirmDialog } from '@/ui/components/ConfirmDialog';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { PageHeader } from '@/ui/components/PageHeader';
 import { ProductFormModal } from '@/ui/components/ProductFormModal';
 import { SearchField } from '@/ui/components/SearchField';
 import { useAppState, useStore } from '@/ui/store/AppStoreProvider';
+import { CategoryManagerModal } from './CategoryManagerModal';
 
 type Editing = { mode: 'new' } | { mode: 'edit'; product: Product } | null;
 
@@ -19,11 +21,13 @@ export function CatalogoScreen() {
     const store = useStore();
     const state = useAppState();
     const [search, setSearch] = useState('');
-    const [category, setCategory] = useState<Category | 'all'>('all');
+    const [categoryId, setCategoryId] = useState<number | 'all'>('all');
     const [editing, setEditing] = useState<Editing>(null);
     const [removing, setRemoving] = useState<Product | null>(null);
+    const [managingCategories, setManagingCategories] = useState(false);
 
-    const products = useMemo(() => filterCatalog(state, search, category), [state, search, category]);
+    const groups = useMemo(() => groupCatalog(state, search, categoryId), [state, search, categoryId]);
+    const shown = groups.reduce((sum, g) => sum + g.products.length, 0);
     const visibleCount = state.products.filter(p => p.visible).length;
 
     async function saveProduct(input: ProductInput) {
@@ -34,7 +38,7 @@ export function CatalogoScreen() {
         }
         const result = await createProduct(input);
         if (!result.ok) return result.error;
-        store.addSavedProduct(result.data);
+        store.applySaved(s => addProduct(s, result.data));
         setEditing(null);
     }
 
@@ -44,27 +48,41 @@ export function CatalogoScreen() {
                 title="Gerenciar catálogo"
                 subtitle={`${state.products.length} produtos no catálogo · ${visibleCount} visíveis na lista`}
                 actions={
-                    <button type="button" className="btn btn-primary" onClick={() => setEditing({ mode: 'new' })}>
-                        <Plus size={16} /> Novo produto
-                    </button>
+                    <>
+                        <button type="button" className="btn btn-outline" onClick={() => setManagingCategories(true)}>
+                            <Layers size={16} /> Categorias
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={() => setEditing({ mode: 'new' })}>
+                            <Plus size={16} /> Novo produto
+                        </button>
+                    </>
                 }
             />
             <div className="toolbar">
                 <SearchField value={search} onChange={setSearch} placeholder="Buscar no catálogo..." />
-                <select className="select" value={category} onChange={e => setCategory(e.target.value as Category | 'all')} aria-label="Filtrar por categoria">
+                <select
+                    className="select"
+                    value={categoryId}
+                    onChange={e => setCategoryId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                    aria-label="Filtrar por categoria"
+                >
                     <option value="all">Todas as categorias</option>
-                    {CATEGORY_KEYS.map(key => <option key={key} value={key}>{CATEGORIES[key]}</option>)}
+                    {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <span className="muted">Exibindo {products.length}</span>
+                <span className="muted">Exibindo {shown}</span>
             </div>
 
-            {products.length === 0 ? (
+            {groups.length === 0 ? (
                 <EmptyState icon={PackageOpen} title="Nenhum produto encontrado.">
                     Cadastre um novo produto ou ajuste a busca.
                 </EmptyState>
             ) : (
-                <div className="catalog-grid">
-                    {products.map(product => (
+                <CategoryGroups
+                    groups={groups}
+                    storageKey="catalogo.categorias-recolhidas"
+                    forceOpen={!!search.trim()}
+                    gridClassName="catalog-grid"
+                    renderProduct={product => (
                         <CatalogCard
                             key={product.id}
                             product={product}
@@ -72,13 +90,14 @@ export function CatalogoScreen() {
                             onEdit={() => setEditing({ mode: 'edit', product })}
                             onRemove={() => setRemoving(product)}
                         />
-                    ))}
-                </div>
+                    )}
+                />
             )}
 
             {editing && (
                 <ProductFormModal
                     title={editing.mode === 'edit' ? 'Editar produto' : 'Cadastrar novo produto'}
+                    categories={state.categories}
                     initial={editing.mode === 'edit' ? editing.product : undefined}
                     onSubmit={saveProduct}
                     onClose={() => setEditing(null)}
@@ -93,6 +112,7 @@ export function CatalogoScreen() {
                     onCancel={() => setRemoving(null)}
                 />
             )}
+            {managingCategories && <CategoryManagerModal state={state} onClose={() => setManagingCategories(false)} />}
         </div>
     );
 }
@@ -106,7 +126,7 @@ interface CatalogCardProps {
 
 function CatalogCard({ product, onToggleVisibility, onEdit, onRemove }: CatalogCardProps) {
     const pp = product.pattern;
-    const meta = [CATEGORIES[product.category], PATTERN_TYPE_LABELS[pp.patternType], `${pp.appearCount}x`]
+    const meta = [PATTERN_TYPE_LABELS[pp.patternType], `${pp.appearCount}x`]
         .filter(Boolean).join(' · ');
 
     return (

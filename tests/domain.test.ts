@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseBackup, parseCycleExport } from '@/domain/backup';
+import { createBackup, parseBackup, parseCycleExport } from '@/domain/backup';
+import { removeCategory, resolveCategoryId, updateCategory, validateCategoryName } from '@/domain/categories';
 import { diffState } from '@/domain/changes';
 import { deleteCycle, getAllCycles, registerList } from '@/domain/cycles';
-import { clearSelection, groupVisibleProducts, setQuantity, toggleSelection } from '@/domain/list';
+import { DEFAULT_CATEGORIES } from '@/domain/constants';
+import { clearSelection, groupCatalog, groupVisibleProducts, setQuantity, toggleSelection } from '@/domain/list';
 import { cycleLabel, createDefaultPattern } from '@/domain/pattern';
 import { buildPrintDocument } from '@/domain/print';
 import { generateRecommendations } from '@/domain/recommendations';
@@ -11,17 +13,22 @@ import type { AppState, Product } from '@/domain/types';
 
 const NOW = new Date(2026, 9, 24);
 
+/** Categorias padrão com ids 1 a 6 (Geladeira=1 ... Armários=3, Limpeza=4, Outros=6). */
+const CATEGORIES = DEFAULT_CATEGORIES.map(({ name, color, icon }, i) => ({ id: i + 1, name, color, icon, position: i + 1 }));
+const ARMARIOS = 3;
+const LIMPEZA = 4;
+
 function product(id: number, name: string, extra: Partial<Product> = {}): Product {
-    return normalizeProduct({ id, name, category: 'armarios', ...extra });
+    return normalizeProduct({ id, name, categoryId: ARMARIOS, ...extra });
 }
 
 function state(products: Product[], totalCycles = 0): AppState {
-    return { products, totalCycles, lastDecayCheck: 0, sortMode: 'alpha', sortDirection: 'asc' };
+    return { categories: CATEGORIES, products, totalCycles, lastDecayCheck: 0, sortMode: 'alpha', sortDirection: 'asc' };
 }
 
 /** Simula N listas em que "Arroz" é comprado sempre e "Café" a cada duas. */
 function simulate(lists: number): AppState {
-    let s = state([product(1, 'Arroz'), product(2, 'Café'), product(3, 'Sabão', { category: 'limpeza' })]);
+    let s = state([product(1, 'Arroz'), product(2, 'Café'), product(3, 'Sabão', { categoryId: LIMPEZA })]);
     for (let i = 1; i <= lists; i++) {
         s = setQuantity(s, 1, 2);
         if (i % 2 === 0) s = toggleSelection(s, 2);
@@ -44,11 +51,11 @@ describe('lista', () => {
     it('agrupa por categoria, ignora acentos na busca e esconde ocultos', () => {
         const s = state([
             product(1, 'Café'),
-            product(2, 'Sabão', { category: 'limpeza' }),
+            product(2, 'Sabão', { categoryId: LIMPEZA }),
             product(3, 'Cafeteira', { visible: false }),
         ]);
         const groups = groupVisibleProducts(s, 'cafe', NOW);
-        expect(groups.map(g => g.category)).toEqual(['armarios']);
+        expect(groups.map(g => g.category.name)).toEqual(['Armários']);
         expect(groups[0].products.map(p => p.name)).toEqual(['Café']);
     });
 
@@ -145,6 +152,8 @@ describe('arquivos', () => {
             { cycle: 3, date: '2026-01-21', quantity: 1 },
         ]);
         expect(backup.products[0].pattern.patternType).toBe('insufficient');
+        expect(backup.products[0].category).toBe('Armários');
+        expect(backup.categories.map(c => c.name)).toEqual(DEFAULT_CATEGORIES.map(c => c.name));
     });
 
     it('lê lista simples antiga sem histórico e rejeita formato desconhecido', () => {
@@ -157,12 +166,73 @@ describe('arquivos', () => {
             type: 'shopping-cycle-export',
             cycle: { date: '2026-02-01', items: [{ productName: ' Arroz ', category: 'x', quantity: '3' }, { productName: '' }] },
         }, NOW);
-        expect(cycle).toEqual({ date: '2026-02-01', items: [{ productName: 'Arroz', category: 'outros', quantity: 3 }] });
+        expect(cycle).toEqual({ date: '2026-02-01', items: [{ productName: 'Arroz', category: 'x', quantity: 3 }] });
     });
 
     it('gera a impressão em colunas e escapa HTML', () => {
         const html = buildPrintDocument('24/10/2026', [{ name: '<b>Arroz</b>', quantity: 2 }]);
         expect(html).toContain('column-count: 3');
         expect(html).toContain('&lt;b&gt;Arroz&lt;/b&gt;');
+    });
+});
+
+describe('categorias', () => {
+    it('agrupa o catálogo na ordem das categorias, inclusive ocultos', () => {
+        const s = state([product(1, 'Sabão', { categoryId: LIMPEZA }), product(2, 'Arroz', { visible: false })]);
+        expect(groupCatalog(s, '', 'all').map(g => g.category.name)).toEqual(['Armários', 'Limpeza']);
+        expect(groupCatalog(s, '', LIMPEZA).map(g => g.products.length)).toEqual([1]);
+    });
+
+    it('produto sem categoria existente vai para "Sem categoria" no fim', () => {
+        const groups = groupVisibleProducts(state([product(1, 'Arroz', { categoryId: 99 })]), '', NOW);
+        expect(groups.map(g => g.category.name)).toEqual(['Sem categoria']);
+    });
+
+    it('remover move os produtos para a categoria escolhida', () => {
+        const s = state([product(1, 'Arroz'), product(2, 'Sabão', { categoryId: LIMPEZA })]);
+        const after = removeCategory(s, ARMARIOS, LIMPEZA);
+        expect(after.categories.map(c => c.id)).not.toContain(ARMARIOS);
+        expect(after.products.map(p => p.categoryId)).toEqual([LIMPEZA, LIMPEZA]);
+
+        const changes = diffState(s, after)!;
+        expect(changes.deletedCategoryIds).toEqual([ARMARIOS]);
+        expect(changes.products.map(p => p.id)).toEqual([1]);
+    });
+
+    it('não remove categoria com produtos sem destino, nem a última', () => {
+        const s = state([product(1, 'Arroz')]);
+        expect(removeCategory(s, ARMARIOS)).toBe(s);
+        const single = { ...state([]), categories: [CATEGORIES[0]] };
+        expect(removeCategory(single, 1)).toBe(single);
+    });
+
+    it('valida nome vazio, longo e repetido (sem diferenciar maiúsculas)', () => {
+        const s = state([]);
+        expect(validateCategoryName(s, '  ')).toMatch(/Informe/);
+        expect(validateCategoryName(s, 'x'.repeat(41))).toMatch(/40/);
+        expect(validateCategoryName(s, 'limpeza')).toMatch(/Já existe/);
+        expect(validateCategoryName(s, 'Limpeza', LIMPEZA)).toBeNull();
+        expect(validateCategoryName(s, 'Hortifrúti')).toBeNull();
+    });
+
+    it('editar gera só a categoria alterada na gravação', () => {
+        const s = state([]);
+        const changes = diffState(s, updateCategory(s, LIMPEZA, { name: 'Casa', color: '#16a34a', icon: 'house' }))!;
+        expect(changes.categories).toEqual([{ id: LIMPEZA, name: 'Casa', color: '#16a34a', icon: 'house', position: 4 }]);
+        expect(changes.products).toEqual([]);
+    });
+
+    it('encontra a categoria pelo nome ou pela chave antiga', () => {
+        const s = state([]);
+        expect(resolveCategoryId(s, 'LIMPEZA')).toBe(LIMPEZA);
+        expect(resolveCategoryId(s, 'armarios')).toBe(ARMARIOS);
+        expect(resolveCategoryId(s, 'inexistente')).toBe(1);
+    });
+
+    it('backup novo guarda categorias e volta igual', () => {
+        const s = state([product(1, 'Sabão', { categoryId: LIMPEZA })]);
+        const restored = parseBackup(JSON.parse(JSON.stringify(createBackup(s, NOW))), NOW)!;
+        expect(restored.categories).toHaveLength(6);
+        expect(restored.products[0].category).toBe('Limpeza');
     });
 });

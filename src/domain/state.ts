@@ -3,7 +3,7 @@
    Toda operação do domínio recebe um estado e devolve um estado novo.
    ================================================================= */
 
-import { isCategory } from './constants';
+import { MISSING_CATEGORY } from './constants';
 import { createDefaultPattern } from './pattern';
 import type { AppState, Product, Purchase, PurchasePattern } from './types';
 
@@ -30,7 +30,7 @@ export function normalizeProduct(product: RawProduct): Product {
         id: product.id,
         name: product.name,
         imageUrl: product.imageUrl ?? '',
-        category: isCategory(product.category) ? product.category : 'outros',
+        categoryId: Number.isInteger(product.categoryId) ? product.categoryId! : MISSING_CATEGORY.id,
         visible: product.visible !== false,
         selected: !!product.selected,
         quantity: typeof product.quantity === 'number' && product.quantity > 0 ? product.quantity : 1,

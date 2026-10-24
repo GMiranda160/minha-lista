@@ -4,7 +4,7 @@
    ================================================================= */
 
 import { diffState } from '@/domain/changes';
-import type { AppState, Product } from '@/domain/types';
+import type { AppState } from '@/domain/types';
 import { fetchState, saveChanges } from '@/services/stateActions';
 
 type Listener = () => void;
@@ -50,9 +50,12 @@ export class AppStore {
         return after;
     };
 
-    /** Inclui um produto já gravado no servidor (não gera nova gravação). */
-    addSavedProduct = (product: Product) => {
-        this.state = { ...this.state, products: [...this.state.products, product] };
+    /**
+     * Aplica uma operação cujo resultado já está gravado no servidor
+     * (ex.: incluir o produto ou a categoria recém-criados). Não gera gravação.
+     */
+    applySaved = (operation: (state: AppState) => AppState) => {
+        this.state = operation(this.state);
         this.emit();
     };
 

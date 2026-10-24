@@ -2,10 +2,11 @@
 
 import { Download, FileText, Plus, Printer, Save, Trash, X } from 'lucide-react';
 import { useState } from 'react';
-import { CATEGORIES, CATEGORY_COLORS } from '@/domain/constants';
+import { categoryOf } from '@/domain/categories';
 import { addCycleItem, removeCycleItem, setCycleQuantities } from '@/domain/cycles';
 import { compareNames, formatDate } from '@/domain/text';
 import type { AppState, Cycle } from '@/domain/types';
+import { CategoryTag } from '@/ui/components/CategoryTag';
 import { useStore } from '@/ui/store/AppStoreProvider';
 
 interface CycleDetailProps {
@@ -60,7 +61,7 @@ export function CycleDetail({ state, cycle, onPrint, onExport, onDelete, onClose
                                 <td>
                                     <div className="strong">{item.productName}</div>
                                     <div className="muted small">
-                                        <span style={{ color: CATEGORY_COLORS[item.category] }}>●</span> {CATEGORIES[item.category]}
+                                        <CategoryTag category={categoryOf(state, item)} />
                                     </div>
                                 </td>
                                 <td>

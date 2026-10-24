@@ -2,7 +2,6 @@
    Relatórios: agregações sobre o catálogo e o histórico de ciclos.
    ================================================================= */
 
-import { CATEGORY_KEYS } from './constants';
 import { getAllCycles } from './cycles';
 import { calculateScore, calculateUrgency, frequencyPercent, type ScoreContext } from './pattern';
 import { compareNames, monthOf } from './text';
@@ -15,10 +14,19 @@ export interface RankedItem {
     pct: number;
 }
 
-export type CategoryTotals = Record<Category, number>;
+export interface CategoryTotal {
+    category: Category;
+    value: number;
+}
 
-const emptyCategoryTotals = (): CategoryTotals =>
-    Object.fromEntries(CATEGORY_KEYS.map(k => [k, 0])) as CategoryTotals;
+/** Soma valores por categoria, na ordem das categorias (todas aparecem, mesmo com zero). */
+function sumByCategory(state: AppState, entries: { categoryId: number; value: number }[]): CategoryTotal[] {
+    const sums = new Map(state.categories.map(c => [c.id, 0]));
+    entries.forEach(({ categoryId, value }) => {
+        if (sums.has(categoryId)) sums.set(categoryId, sums.get(categoryId)! + value);
+    });
+    return state.categories.map(category => ({ category, value: sums.get(category.id)! }));
+}
 
 export const productsWithHistory = (state: AppState): Product[] =>
     state.products.filter(p => p.pattern.appearCount > 0);
@@ -36,12 +44,10 @@ export function getTopItems(state: AppState): RankedItem[] {
 }
 
 /** Média de aparições por lista, por categoria. */
-export function getCategoryAverages(state: AppState): CategoryTotals {
-    const totals = emptyCategoryTotals();
-    if (state.totalCycles === 0) return totals;
-    productsWithHistory(state).forEach(p => { totals[p.category] += p.pattern.appearCount; });
-    CATEGORY_KEYS.forEach(k => { totals[k] = totals[k] / state.totalCycles; });
-    return totals;
+export function getCategoryAverages(state: AppState): CategoryTotal[] {
+    const cycles = Math.max(1, state.totalCycles);
+    return sumByCategory(state, productsWithHistory(state).map(p =>
+        ({ categoryId: p.categoryId, value: p.pattern.appearCount / cycles })));
 }
 
 /** Aparições por mês (0 a 11) somando todos os produtos. */
@@ -60,16 +66,15 @@ export interface MonthOverview {
     totalProducts: number;
     cycleCount: number;
     items: RankedItem[];
-    categories: CategoryTotals;
+    categories: CategoryTotal[];
 }
 
 export function getMonthOverview(state: AppState, month: number): MonthOverview {
-    const categories = emptyCategoryTotals();
     const counted = state.products
         .map(p => ({ product: p, count: p.pattern.monthlyAppearances[month] || 0 }))
         .filter(x => x.count > 0)
         .sort((a, b) => b.count - a.count);
-    counted.forEach(x => { categories[x.product.category] += x.count; });
+    const categories = sumByCategory(state, counted.map(x => ({ categoryId: x.product.categoryId, value: x.count })));
 
     const max = Math.max(1, counted[0]?.count ?? 1);
     const cycleCount = getAllCycles(state).filter(c => monthOf(c.date) === month).length;

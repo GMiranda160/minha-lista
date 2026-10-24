@@ -33,7 +33,7 @@ export function CyclesTab({ state }: { state: AppState }) {
     const totalItems = cycles.reduce((sum, c) => sum + c.items.length, 0);
 
     const exportCycle = (cycle: Cycle) =>
-        downloadJson(createCycleExport(cycle), `ciclo_${cycle.number}_${cycle.date}.json`);
+        downloadJson(createCycleExport(state, cycle), `ciclo_${cycle.number}_${cycle.date}.json`);
 
     function confirmDelete() {
         if (deleting === null) return;

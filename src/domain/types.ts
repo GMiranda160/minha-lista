@@ -2,7 +2,17 @@
    Tipos do domínio. Nenhum arquivo de domain/ conhece banco ou tela.
    ================================================================= */
 
-export type Category = 'geladeira' | 'freezer' | 'armarios' | 'limpeza' | 'higiene' | 'outros';
+/** Categoria criada pelo usuário. `icon` é a chave de um ícone de CATEGORY_ICONS. */
+export interface Category {
+    id: number;
+    name: string;
+    color: string;
+    icon: string;
+    position: number;
+}
+
+/** Dados editáveis de uma categoria no formulário. */
+export type CategoryInput = Pick<Category, 'name' | 'color' | 'icon'>;
 
 export type PatternType = 'insufficient' | 'regular' | 'semi-regular' | 'irregular' | 'sporadic' | 'declining';
 
@@ -50,7 +60,7 @@ export interface Product {
     id: number;
     name: string;
     imageUrl: string;
-    category: Category;
+    categoryId: number;
     visible: boolean;
     selected: boolean;
     quantity: number;
@@ -60,6 +70,8 @@ export interface Product {
 }
 
 export interface AppState {
+    /** Ordenadas por posição. */
+    categories: Category[];
     products: Product[];
     totalCycles: number;
     lastDecayCheck: number;
@@ -71,7 +83,7 @@ export interface AppState {
 export interface ProductInput {
     name: string;
     imageUrl: string;
-    category: Category;
+    categoryId: number;
 }
 
 /** Item de uma lista impressa ou de um ciclo. */
@@ -83,7 +95,7 @@ export interface ListItem {
 export interface CycleItem {
     productId: number;
     productName: string;
-    category: Category;
+    categoryId: number;
     quantity: number;
 }
 

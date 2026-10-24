@@ -3,14 +3,15 @@
 import { CirclePlus, FileUp, Trash } from 'lucide-react';
 import { useState } from 'react';
 import { parseCycleExport, type CycleFile, type CycleFileItem } from '@/domain/backup';
-import { CATEGORIES } from '@/domain/constants';
+import { findCategory, resolveCategoryId } from '@/domain/categories';
 import { importCycle } from '@/domain/cycles';
+import { addProduct } from '@/domain/list';
 import { formatDate, sameName } from '@/domain/text';
 import { createProduct } from '@/services/stateActions';
 import { Modal } from '@/ui/components/Modal';
 import { ProductFormModal } from '@/ui/components/ProductFormModal';
 import { readJsonFile } from '@/ui/lib/files';
-import { useStore } from '@/ui/store/AppStoreProvider';
+import { useAppState, useStore } from '@/ui/store/AppStoreProvider';
 
 interface Session {
     date: string;
@@ -60,7 +61,7 @@ export function useCycleImport() {
         if (!session?.current) return;
         const result = await createProduct(input);
         if (!result.ok) return result.error;
-        store.addSavedProduct(result.data);
+        store.applySaved(s => addProduct(s, result.data));
         advance({
             ...session,
             current: null,
@@ -69,10 +70,13 @@ export function useCycleImport() {
     }
 
     const current = session?.current;
+    const state = useAppState();
+    const suggestedCategoryId = current ? resolveCategoryId(state, current.category) : undefined;
     const dialog = current && (session.registering ? (
         <ProductFormModal
             title="Cadastrar produto do ciclo"
-            initial={{ name: current.productName, category: current.category }}
+            categories={state.categories}
+            initial={{ name: current.productName, categoryId: suggestedCategoryId }}
             onSubmit={registerCurrent}
             onClose={() => setSession({ ...session, registering: false })}
         />
@@ -95,7 +99,7 @@ export function useCycleImport() {
             <p>Este item do ciclo importado não existe no catálogo. O que deseja fazer?</p>
             <div className="import-item">
                 <strong>{current.productName}</strong>
-                <span>{CATEGORIES[current.category]} · Qtd: {current.quantity} · Data: {formatDate(session.date)}</span>
+                <span>{findCategory(state, suggestedCategoryId ?? -1)?.name ?? current.category} · Qtd: {current.quantity} · Data: {formatDate(session.date)}</span>
             </div>
             <p className="hint">Fechar esta janela cancela a importação inteira.</p>
         </Modal>
