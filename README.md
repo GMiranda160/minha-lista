@@ -123,8 +123,8 @@ O cadastro pelo app está **desativado**. Para impedir também o cadastro direto
 
 Para criar uma conta, use **Authentication > Users > Add user > Create new user** no Supabase:
 
-- **E-mail**: `usuario@minhalista.example.com` (ex.: `patricia@minhalista.example.com`). Na tela de login basta digitar `patricia`: o app completa o domínio sozinho. O domínio `example.com` é reservado e nunca recebe e-mail.
-- **Senha**: a senha da pessoa.
+- **E-mail**: `<usuario>@minhalista.example.com`. Na tela de login basta digitar `<usuario>`: o app completa o domínio sozinho. O domínio `example.com` é reservado e nunca recebe e-mail.
+- **Senha**: definida por quem cria a conta. Nunca registre usuários ou senhas neste repositório.
 - Marque **Auto Confirm User**.
 
 Quem tiver um e-mail real cadastrado também pode entrar digitando o e-mail completo.
