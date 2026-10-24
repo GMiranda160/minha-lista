@@ -9,7 +9,7 @@ Lista de compras inteligente que aprende com os seus hábitos. Você monta a lis
 - **Impressão**: abre a lista em A4 paisagem, em colunas, ajustando fonte e número de colunas para caber em uma folha. Ao confirmar, a lista vira um novo ciclo.
 - **Catálogo**: cadastrar, editar, excluir e ocultar produtos (produto oculto sai da lista e congela o padrão).
 - **Relatórios**: visão anual e mensal, análise por produto, tabela técnica do motor de recomendação e gerenciador de ciclos (editar, excluir com renumeração, reimprimir, exportar e importar um ciclo).
-- **Conta e backup**: login por e-mail e senha (Supabase Auth). Cada usuário só acessa os próprios dados. Exportar e importar backup em JSON, inclusive o `lista.json` do antigo app desktop.
+- **Conta e backup**: login por usuário e senha (Supabase Auth), sem cadastro aberto. Cada usuário só acessa os próprios dados. Exportar e importar backup em JSON, inclusive o `lista.json` do antigo app desktop.
 
 ## Regras do projeto
 
@@ -116,6 +116,18 @@ npm run dev                  # http://localhost:3000
 ```
 
 No Windows, basta dar dois cliques em `rodar-dev.bat`: ele confere o Node e o `.env.local`, instala as dependências na primeira vez, sobe o servidor e abre o navegador.
+
+### Contas de usuário
+
+O cadastro pelo app está **desativado**. Para impedir também o cadastro direto pela API, deixe desligado **Authentication > Sign In / Providers > Allow new users to sign up** no Supabase.
+
+Para criar uma conta, use **Authentication > Users > Add user > Create new user** no Supabase:
+
+- **E-mail**: `usuario@minhalista.example.com` (ex.: `patricia@minhalista.example.com`). Na tela de login basta digitar `patricia`: o app completa o domínio sozinho. O domínio `example.com` é reservado e nunca recebe e-mail.
+- **Senha**: a senha da pessoa.
+- Marque **Auto Confirm User**.
+
+Quem tiver um e-mail real cadastrado também pode entrar digitando o e-mail completo.
 
 ### 3. Deploy na Vercel
 
