@@ -169,9 +169,13 @@ describe('arquivos', () => {
         expect(cycle).toEqual({ date: '2026-02-01', items: [{ productName: 'Arroz', category: 'x', quantity: 3 }] });
     });
 
-    it('gera a impressão em colunas e escapa HTML', () => {
+    it('gera a impressão em paisagem, em colunas e escapa HTML', () => {
         const html = buildPrintDocument('24/10/2026', [{ name: '<b>Arroz</b>', quantity: 2 }]);
+        expect(html).toContain('size: A4 landscape');
+        expect(html).toContain('size: 297mm 210mm');
         expect(html).toContain('column-count: 3');
+        expect(html).toContain('font-size: 17px');
+        expect(html).toContain('.print-date { font-size: 16px');
         expect(html).toContain('&lt;b&gt;Arroz&lt;/b&gt;');
     });
 });
