@@ -39,7 +39,7 @@ export function PrintPreviewModal({ title, heading, items, confirmLabel, onConfi
                     </div>
                 ))}
             </div>
-            <p className="hint"><Info size={14} /> A lista abre em uma nova aba e é impressa em A4 paisagem.</p>
+            <p className="hint"><Info size={14} /> A lista abre em uma nova aba, já em A4 paisagem, com a fonte ajustada para caber em uma folha. No celular, confira se a orientação está em Paisagem.</p>
         </Modal>
     );
 }

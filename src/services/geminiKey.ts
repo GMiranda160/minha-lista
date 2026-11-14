@@ -15,7 +15,8 @@ const IV_BYTES = 12;
 const TAG_BYTES = 16;
 
 export function geminiApiKey(): string {
-    const secret = process.env.GEMINI_KEY_SECRET;
+    /* Painéis de variáveis costumam deixar espaço, quebra de linha ou aspas ao colar. */
+    const secret = process.env.GEMINI_KEY_SECRET?.trim().replace(/^(["'])(.*)\1$/, '$2').trim();
     if (!secret) throw new Error('Configure GEMINI_KEY_SECRET no .env.local');
 
     const raw = Buffer.from(ENCRYPTED_GEMINI_KEY, 'base64');
@@ -29,6 +30,7 @@ export function geminiApiKey(): string {
         decipher.setAuthTag(tag);
         return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
     } catch {
+        console.error(`GEMINI_KEY_SECRET recebida com ${secret.length} caracteres não decifra a chave.`);
         throw new Error('GEMINI_KEY_SECRET não decifra a chave do Gemini.');
     }
 }
