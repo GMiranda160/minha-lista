@@ -43,6 +43,9 @@ export const PATTERN_TYPE_LABELS: Partial<Record<PatternType, string>> = {
 };
 
 export const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+export const MONTH_FULL_NAMES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
 
 /* Parâmetros do motor de recomendação */
 export const DECAY_FACTOR = 0.85;
@@ -76,5 +79,4 @@ export const SURE_PROBABILITY = 0.6;
 
 /* Recomendações com IA */
 export const AI_MAX_CANDIDATES = 200;
-export const AI_MAX_QUANTITY = 99;
 export const AI_REASON_MAX = 120;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Eraser, Printer, Receipt, ShoppingCart, X } from 'lucide-react';
+import { ClipboardCheck, Eraser, Printer, Receipt, ShoppingCart, X } from 'lucide-react';
 import type { Product } from '@/domain/types';
 
 interface ReceiptPanelProps {
@@ -18,7 +18,7 @@ export function ReceiptPanel({ items, open, onToggleOpen, onRemove, onClear, onP
     return (
         <>
             <button type="button" className="receipt-fab" onClick={onToggleOpen} aria-expanded={open}>
-                <Receipt size={18} /> Minha lista <span className="receipt-count">{count}</span>
+                <ClipboardCheck size={18} /> Finalizar lista <span className="receipt-count">{count}</span>
             </button>
             {open && <div className="backdrop receipt-backdrop" onClick={onToggleOpen} />}
             <aside className={`receipt ${open ? 'open' : ''}`} aria-label="Itens selecionados">

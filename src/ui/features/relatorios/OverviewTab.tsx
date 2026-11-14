@@ -2,7 +2,7 @@
 
 import { Boxes, CalendarDays, Layers, ListChecks, Receipt, Star, Trophy } from 'lucide-react';
 import { useState } from 'react';
-import { MONTH_NAMES } from '@/domain/constants';
+import { MONTH_FULL_NAMES, MONTH_NAMES } from '@/domain/constants';
 import {
     getCategoryAverages, getMonthlyTotals, getMonthOverview, getTopItems, productsWithHistory,
 } from '@/domain/reports';
@@ -17,13 +17,16 @@ export function OverviewTab({ state }: { state: AppState }) {
 
     return (
         <>
-            <div className="month-bar">
-                <button type="button" className={`month-btn ${month === null ? 'active' : ''}`} onClick={() => setMonth(null)}>Anual</button>
-                {MONTH_NAMES.map((name, i) => (
-                    <button key={name} type="button" className={`month-btn ${month === i ? 'active' : ''}`} onClick={() => setMonth(i)}>
-                        {name}
-                    </button>
-                ))}
+            <div className="toolbar toolbar-period">
+                <select
+                    className="select"
+                    value={month ?? 'all'}
+                    onChange={e => setMonth(e.target.value === 'all' ? null : Number(e.target.value))}
+                    aria-label="Período"
+                >
+                    <option value="all">Ano todo</option>
+                    {MONTH_FULL_NAMES.map((name, i) => <option key={name} value={i}>{name}</option>)}
+                </select>
             </div>
             {month === null ? <AnnualView state={state} /> : <MonthView state={state} month={month} />}
         </>

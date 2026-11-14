@@ -275,29 +275,36 @@ describe('categorias', () => {
 describe('recomendações com IA', () => {
     it('valida a resposta do Gemini e descarta itens malformados', () => {
         const text = JSON.stringify({ itens: [
-            { id: 1, quantidade: 500, motivo: ' compra toda lista ' },
-            { id: 'x', quantidade: 1, motivo: 'id inválido' },
-            { id: 2, quantidade: 0, motivo: 3 },
+            { id: 1, motivo: ' compra toda lista ' },
+            { id: 'x', motivo: 'id inválido' },
+            { id: 2, quantidade: 5, motivo: 3 },
         ] });
         expect(parseAiPicks(text)).toEqual([
-            { productId: 1, quantity: 99, reason: 'compra toda lista' },
-            { productId: 2, quantity: 1, reason: '' },
+            { productId: 1, reason: 'compra toda lista' },
+            { productId: 2, reason: '' },
         ]);
         expect(() => parseAiPicks('não é json')).toThrow();
         expect(() => parseAiPicks('{}')).toThrow();
+    });
+
+    it('mantém quantidades grandes (gramas) vindas do histórico, sem limite', () => {
+        const base = simulate(8);
+        const grams = { ...base, products: base.products.map(p => (p.id === 1 ? { ...p, history: p.history.map(h => ({ ...h, quantity: 300 })) } : p)) };
+        const groups = resolveAiPicks(grams, [{ productId: 1, reason: 'x' }]);
+        expect([...groups.established, ...groups.learning][0].recommendedQty).toBe(300);
     });
 
     it('resolve as escolhas ignorando ids inexistentes, ocultos e repetidos', () => {
         const base = simulate(8);
         const s = { ...base, products: base.products.map(p => (p.id === 3 ? { ...p, visible: false } : p)) };
         const groups = resolveAiPicks(s, [
-            { productId: 1, quantity: 3, reason: 'acaba rápido' },
-            { productId: 1, quantity: 9, reason: 'repetido' },
-            { productId: 3, quantity: 1, reason: 'oculto' },
-            { productId: 99, quantity: 1, reason: 'inexistente' },
+            { productId: 1, reason: 'acaba rápido' },
+            { productId: 1, reason: 'repetido' },
+            { productId: 3, reason: 'oculto' },
+            { productId: 99, reason: 'inexistente' },
         ]);
         const all = [...groups.established, ...groups.learning];
         expect(all.map(r => r.product.id)).toEqual([1]);
-        expect(all[0]).toMatchObject({ recommendedQty: 3, context: 'acaba rápido' });
+        expect(all[0]).toMatchObject({ recommendedQty: 2, context: 'acaba rápido' });
     });
 });

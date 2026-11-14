@@ -58,7 +58,7 @@ export function CatalogoScreen() {
                     </>
                 }
             />
-            <div className="toolbar">
+            <div className="toolbar toolbar-catalog">
                 <SearchField value={search} onChange={setSearch} placeholder="Buscar no catálogo..." />
                 <select
                     className="select"
@@ -69,7 +69,7 @@ export function CatalogoScreen() {
                     <option value="all">Todas as categorias</option>
                     {state.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <span className="muted">Exibindo {shown}</span>
+                <span className="count-bubble" aria-live="polite">Exibindo <strong>{shown}</strong></span>
             </div>
 
             {groups.length === 0 ? (

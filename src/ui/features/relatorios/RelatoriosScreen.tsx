@@ -52,9 +52,11 @@ export function RelatoriosScreen() {
                                 role="tab"
                                 aria-selected={tab === id}
                                 className={`tab ${tab === id ? 'active' : ''}`}
+                                title={label}
+                                aria-label={label}
                                 onClick={() => setTab(id)}
                             >
-                                <Icon size={16} /> {label}
+                                <Icon size={16} /> <span className="tab-label">{label}</span>
                             </button>
                         ))}
                     </div>

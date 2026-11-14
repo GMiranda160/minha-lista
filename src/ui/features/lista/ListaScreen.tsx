@@ -73,10 +73,10 @@ export function ListaScreen() {
                         >
                             <ChartColumn size={18} />
                         </button>
-                        <button type="button" className="tool-btn rec" onClick={() => setDialog('recommendations')} title="Gerar recomendações">
-                            <WandSparkles size={18} /> <span className="hide-sm">Recomendações</span>
-                        </button>
                     </div>
+                    <button type="button" className="tool-btn rec" onClick={() => setDialog('recommendations')} title="Gerar recomendações">
+                        <WandSparkles size={18} /> Recomendações
+                    </button>
                 </div>
 
                 {groups.length === 0 ? (

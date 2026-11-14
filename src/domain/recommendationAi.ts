@@ -4,7 +4,7 @@
    ================================================================= */
 
 import { categoryOf } from './categories';
-import { AI_MAX_CANDIDATES, AI_MAX_QUANTITY, AI_REASON_MAX, MONTH_NAMES } from './constants';
+import { AI_MAX_CANDIDATES, AI_REASON_MAX, MONTH_NAMES } from './constants';
 import { createProbability } from './probability';
 import {
     describeRecommendation, groupRecommendations, rankCandidates, suggestedQuantity,
@@ -13,10 +13,9 @@ import {
 import { toIsoDate } from './text';
 import type { AppState, Product } from './types';
 
-/** Uma escolha do Gemini: produto, quantidade e o motivo em uma frase. */
+/** Uma escolha do Gemini: produto e o motivo em uma frase. A quantidade vem sempre do histórico. */
 export interface AiPick {
     productId: number;
-    quantity: number;
     reason: string;
 }
 
@@ -32,7 +31,7 @@ Escolha os produtos que provavelmente entram na próxima lista. Regras:
 - "historico_ultimas_listas" tem uma letra por lista, da mais antiga para a mais recente: X comprou, ponto não comprou.
 - Em dúvida, inclua produtos com probabilidade a partir de 35: é mais fácil desmarcar um item do que lembrar de um esquecido.
 - "itens_nas_ultimas_listas" mostra o tamanho das listas recentes: mire em uma lista desse tamanho.
-- "quantidade" é um inteiro de 1 a ${AI_MAX_QUANTITY}, baseado nas quantidades recentes.
+- Você escolhe só os produtos. A quantidade é calculada pelo app a partir do histórico (algumas são em gramas, como 300 ou 200), então não a informe.
 - "motivo" é uma frase curta em português (até 80 caracteres), sem travessões.
 - Responda somente o JSON pedido.`;
 
@@ -46,10 +45,9 @@ export const AI_RESPONSE_SCHEMA = {
                 type: 'OBJECT',
                 properties: {
                     id: { type: 'INTEGER' },
-                    quantidade: { type: 'INTEGER' },
                     motivo: { type: 'STRING' },
                 },
-                required: ['id', 'quantidade', 'motivo'],
+                required: ['id', 'motivo'],
             },
         },
     },
@@ -124,11 +122,10 @@ export function parseAiPicks(text: string): AiPick[] {
     if (!Array.isArray(items)) throw new Error('O Gemini devolveu uma resposta em formato inválido.');
 
     return items.flatMap((item): AiPick[] => {
-        const { id, quantidade, motivo } = (item ?? {}) as Record<string, unknown>;
+        const { id, motivo } = (item ?? {}) as Record<string, unknown>;
         if (!Number.isInteger(id)) return [];
-        const quantity = Math.min(AI_MAX_QUANTITY, Math.max(1, Math.round(Number(quantidade)) || 1));
         const reason = typeof motivo === 'string' ? motivo.trim().slice(0, AI_REASON_MAX) : '';
-        return [{ productId: id as number, quantity, reason }];
+        return [{ productId: id as number, reason }];
     });
 }
 
@@ -147,7 +144,7 @@ export function resolveAiPicks(state: AppState, picks: AiPick[]): Recommendation
             product,
             score: probability(product),
             context: pick.reason || describeRecommendation(product, state.totalCycles),
-            recommendedQty: pick.quantity,
+            recommendedQty: suggestedQuantity(product),
         });
     });
     return groupRecommendations(recommendations);
