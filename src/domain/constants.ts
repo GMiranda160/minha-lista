@@ -60,6 +60,20 @@ export const SCORE_WEIGHTS = {
     consistencyBonus: 0.10,
 };
 
+/* Probabilidade de compra (recomendações) */
+/** Peso, em listas, da taxa média da casa usada como ponto de partida de cada produto. */
+export const PROBABILITY_PRIOR_WEIGHT = 2;
+/** Taxa usada enquanto nenhum produto tem histórico. */
+export const DEFAULT_BASE_RATE = 0.15;
+/** Calibração: usa as últimas listas, só com pelo menos estas listas de histórico e amostras. */
+export const CALIBRATION_MAX_LISTS = 40;
+export const CALIBRATION_MIN_LISTS = 2;
+export const CALIBRATION_MIN_SAMPLES = 150;
+/** Quanto a inclinação da calibração é puxada para 1 (sem correção de escala). */
+export const CALIBRATION_SLOPE_PRIOR = 5;
+/** A partir daqui a recomendação é "garantida". */
+export const SURE_PROBABILITY = 0.6;
+
 /* Recomendações com IA */
 export const AI_MAX_CANDIDATES = 200;
 export const AI_MAX_QUANTITY = 99;

@@ -110,7 +110,7 @@ export function RecommendationModal({ state, onApply, onClose }: RecommendationM
             footer={
                 <>
                     <button type="button" className="btn btn-outline" onClick={() => onApply(established)} disabled={established.length === 0}>
-                        <CircleCheck size={16} /> Apenas garantidos
+                        <CircleCheck size={16} /> Só os muito prováveis
                     </button>
                     <button type="button" className="btn btn-rec" onClick={() => onApply([...established, ...learning])}>
                         <ListChecks size={16} /> Lista completa
@@ -121,12 +121,12 @@ export function RecommendationModal({ state, onApply, onClose }: RecommendationM
             <div className="rec-summary">
                 {established.length > 0 && (
                     <div className="rec-summary-item established">
-                        <CircleCheck size={22} /><strong>{established.length}</strong> garantido{established.length > 1 ? 's' : ''}
+                        <CircleCheck size={22} /><strong>{established.length}</strong> {established.length > 1 ? 'muito prováveis' : 'muito provável'}
                     </div>
                 )}
                 {learning.length > 0 && (
                     <div className="rec-summary-item learning">
-                        <Hourglass size={22} /><strong>{learning.length}</strong> em aprendizado
+                        <Hourglass size={22} /><strong>{learning.length}</strong> {learning.length > 1 ? 'prováveis' : 'provável'}
                     </div>
                 )}
             </div>
@@ -146,7 +146,7 @@ function RecommendationRow({ rec, icon, kind }: { rec: Recommendation; icon: str
                 <div className="rec-name">
                     {rec.product.name}
                     <span className={`rec-tag ${kind}`}>
-                        {kind === 'established' ? <><CircleCheck size={11} /> Garantido</> : <><Hourglass size={11} /> Aprendendo</>}
+                        {kind === 'established' ? <><CircleCheck size={11} /> Muito provável</> : <><Hourglass size={11} /> Provável</>}
                     </span>
                 </div>
                 <div className="rec-context">{rec.context}</div>

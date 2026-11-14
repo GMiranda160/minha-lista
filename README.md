@@ -5,7 +5,7 @@ Lista de compras inteligente que aprende com os seus hábitos. Você monta a lis
 ## Funcionalidades
 
 - **Minha Lista**: produtos agrupados em cartões de categoria retráteis (o aparelho lembra quais estão recolhidos), busca sem acentos, ordenação alfabética ou por frequência, seleção com quantidade e uma "notinha" com os itens escolhidos.
-- **Recomendações**: produtos com padrão consolidado ("Garantidos") e produtos ainda em aprendizado, com quantidade sugerida pela mediana das últimas compras.
+- **Recomendações**: o botão "Gerar recomendações" calcula a probabilidade de cada produto entrar na próxima lista (frequência suavizada e calibrada pelo histórico) e pede ao Gemini um ajuste final. Os resultados aparecem como "muito prováveis" e "prováveis", com quantidade sugerida pela mediana das últimas compras. O Gemini só é chamado quando você clica no botão; se falhar, há o cálculo local.
 - **Impressão**: abre a lista em A4 paisagem, em colunas, ajustando fonte e número de colunas para caber em uma folha. Ao confirmar, a lista vira um novo ciclo.
 - **Catálogo**: cadastrar, editar, excluir e ocultar produtos (produto oculto sai da lista e congela o padrão), agrupados nos mesmos cartões de categoria.
 - **Categorias**: botão **Categorias** no catálogo para cadastrar, editar (nome, cor e ícone) e remover. Ao remover uma categoria com produtos, você escolhe para qual categoria eles vão. Toda conta nova começa com 6 categorias padrão.
@@ -113,7 +113,7 @@ tests/                 Testes do domínio (Vitest)
 Requisitos: Node.js 20 ou mais novo.
 
 ```bash
-cp .env.example .env.local   # preencha com a URL e a chave do Supabase
+cp .env.example .env.local   # preencha com a URL e a chave do Supabase e a GEMINI_KEY_SECRET
 npm install
 npm run dev                  # http://localhost:3000
 ```
@@ -135,7 +135,7 @@ Quem tiver um e-mail real cadastrado também pode entrar digitando o e-mail comp
 ### 3. Deploy na Vercel
 
 1. Importe este repositório do GitHub na Vercel.
-2. Em **Environment Variables**, cadastre `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+2. Em **Environment Variables**, cadastre `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `GEMINI_KEY_SECRET` (a senha que decifra a chave do Gemini guardada em `src/services/geminiKey.ts`).
 3. A cada push na branch principal a Vercel publica uma nova versão.
 
 ### Trazer os dados do app desktop

@@ -8,6 +8,7 @@ import { clearSelection, groupCatalog, groupVisibleProducts, setQuantity, toggle
 import { cycleLabel, createDefaultPattern } from '@/domain/pattern';
 import { buildPrintDocument } from '@/domain/print';
 import { parseAiPicks, resolveAiPicks } from '@/domain/recommendationAi';
+import { baseRate, createProbability, purchaseProbability } from '@/domain/probability';
 import { applyRecommendations, generateRecommendations } from '@/domain/recommendations';
 import { normalizeProduct } from '@/domain/state';
 import type { AppState, Product } from '@/domain/types';
@@ -87,16 +88,35 @@ describe('ciclos', () => {
     });
 
     it('recomenda produtos com padrão estabelecido', () => {
-        const { established, learning } = generateRecommendations(simulate(8), NOW);
+        const { established, learning } = generateRecommendations(simulate(8));
         const names = [...established, ...learning].map(r => r.product.name);
         expect(names).toContain('Arroz');
         expect(established.find(r => r.product.name === 'Arroz')?.recommendedQty).toBe(2);
     });
 
+    it('calcula a probabilidade de compra suavizada pela taxa média', () => {
+        const s = simulate(8);
+        const [arroz, cafe, sabao] = s.products;
+        const base = baseRate(s);
+        expect(purchaseProbability(arroz, base)).toBeGreaterThan(0.85);
+        expect(purchaseProbability(cafe, base)).toBeCloseTo(0.55, 2);
+        expect(purchaseProbability(sabao, base)).toBeLessThan(purchaseProbability(cafe, base));
+        expect(generateRecommendations(s).established.map(r => r.product.name)).toEqual(['Arroz']);
+    });
+
+    it('a calibração mantém as probabilidades válidas e a ordem dos produtos', () => {
+        const s = simulate(30);
+        const probability = createProbability(s);
+        const [arroz, cafe, sabao] = s.products.map(probability);
+        [arroz, cafe, sabao].forEach(p => { expect(p).toBeGreaterThan(0); expect(p).toBeLessThan(1); });
+        expect(arroz).toBeGreaterThan(cafe);
+        expect(cafe).toBeGreaterThan(sabao);
+    });
+
     it('não recomenda produto oculto nem o seleciona ao aplicar', () => {
         const base = simulate(8);
         const hidden = { ...base, products: base.products.map(p => (p.id === 1 ? { ...p, visible: false } : p)) };
-        const names = Object.values(generateRecommendations(hidden, NOW)).flat().map(r => r.product.name);
+        const names = Object.values(generateRecommendations(hidden)).flat().map(r => r.product.name);
         expect(names).not.toContain('Arroz');
 
         const picks = [{ product: hidden.products[0], recommendedQty: 2 }];
@@ -275,7 +295,7 @@ describe('recomendações com IA', () => {
             { productId: 1, quantity: 9, reason: 'repetido' },
             { productId: 3, quantity: 1, reason: 'oculto' },
             { productId: 99, quantity: 1, reason: 'inexistente' },
-        ], NOW);
+        ]);
         const all = [...groups.established, ...groups.learning];
         expect(all.map(r => r.product.id)).toEqual([1]);
         expect(all[0]).toMatchObject({ recommendedQty: 3, context: 'acaba rápido' });

@@ -41,7 +41,7 @@
     --shadow-lg: 0 1rem 2.5rem rgba(15, 23, 42, 0.18);
 
     /* Proporção dos cartões com foto (largura / altura) */
-    --card-ratio: 5 / 4;
+    --card-ratio: 1 / 1;
 
     --sidebar-w: 15.5rem;
     --receipt-w: 19rem;
@@ -266,7 +266,12 @@ a { color: inherit; text-decoration: none; }
 .category-panel {
     --category-color: var(--primary);
     background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
-    border-left: 5px solid var(--category-color);
+    overflow: hidden;
+}
+/* Faixa de cor no topo, em degradê da cor da categoria para uma versão mais clara. */
+.category-panel::before {
+    content: ''; display: block; height: 0.4rem;
+    background: linear-gradient(90deg, var(--category-color), color-mix(in srgb, var(--category-color) 30%, white));
 }
 .category-panel-header {
     width: 100%; display: flex; align-items: center; gap: 0.75rem;
@@ -298,7 +303,7 @@ a { color: inherit; text-decoration: none; }
 .category-tag { display: inline-flex; align-items: center; gap: 0.3rem; }
 .category-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; flex-shrink: 0; }
 
-.product-grid, .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.75rem; }
+.product-grid, .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.85rem; }
 
 /* Cartão com foto (lista e catálogo). Sem borda: a seleção é um anel externo
    (box-shadow), para a faixa do nome encostar nas bordas do cartão. */
@@ -311,33 +316,39 @@ a { color: inherit; text-decoration: none; }
 .product-card:hover { transform: translateY(-2px); }
 .product-card.selected { box-shadow: 0 0 0 2px var(--selected-border), var(--shadow); }
 .product-card-hit { position: absolute; inset: 0; z-index: 1; }
-.card-placeholder { position: absolute; inset: 0 0 3rem; display: flex; align-items: center; justify-content: center; color: var(--border-strong); background: var(--bg-end); }
+.card-placeholder { position: absolute; inset: 0 0 3.6rem; display: flex; align-items: center; justify-content: center; color: var(--border-strong); background: var(--bg-end); }
 .card-check {
     position: absolute; top: 0.5rem; right: 0.5rem; z-index: 2;
-    width: 1.6rem; height: 1.6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    width: 1.9rem; height: 1.9rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     background: var(--primary); color: #fff; opacity: 0; transform: scale(0.6); transition: 0.15s;
 }
 .product-card.selected .card-check { opacity: 1; transform: scale(1); }
-.card-badges { position: absolute; top: 0.5rem; left: 0.5rem; z-index: 2; display: flex; flex-direction: column; gap: 0.25rem; pointer-events: none; }
-.badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.45rem; border-radius: 1rem; font-size: 0.65rem; font-weight: 700; color: #fff; }
+/* Marca-páginas: pendurados no topo do cartão, com o recorte em V embaixo. */
+.card-badges { position: absolute; top: 0; left: 0.6rem; z-index: 2; display: flex; gap: 0.3rem; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3)); }
+.badge {
+    display: inline-flex; align-items: flex-start; justify-content: center;
+    width: 1.8rem; height: 2.4rem; padding-top: 0.4rem; color: #fff;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .badge-rec { background: var(--rec); }
 .badge-recent { background: var(--print); }
 
 .card-band {
     position: relative; z-index: 2; pointer-events: none;
-    display: flex; flex-direction: column; gap: 0.35rem;
-    padding: 0.55rem 0.65rem; background: rgba(255, 255, 255, 0.94);
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.35rem;
+    padding: 0.7rem 0.8rem; background: rgba(255, 255, 255, 0.94);
 }
 .product-card.selected .card-band { background: rgba(203, 241, 236, 0.96); }
-.card-name-group { display: flex; flex-direction: column; gap: 0.2rem; }
-.card-name { font-weight: 700; font-size: 0.9rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.card-freq { display: flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
+.card-name-group { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; width: 100%; }
+.card-name { font-weight: 700; font-size: 1rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.card-freq { display: flex; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
 .card-meta { font-size: 0.72rem; color: var(--text-muted); }
 .card-actions { display: flex; justify-content: space-around; border-top: 1px solid var(--border); padding-top: 0.25rem; pointer-events: auto; }
 
-.stepper { display: flex; align-items: center; gap: 0.25rem; pointer-events: auto; }
-.stepper button { width: 1.9rem; height: 1.9rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; }
-.stepper input { width: 2.6rem; height: 1.9rem; text-align: center; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: #fff; -moz-appearance: textfield; }
+.stepper { display: flex; align-items: center; justify-content: center; gap: 0.25rem; pointer-events: auto; }
+.stepper button { width: 2.3rem; height: 2.3rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; }
+.stepper input { width: 3rem; height: 2.3rem; text-align: center; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: #fff; -moz-appearance: textfield; }
 .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
 /* Notinha: botão flutuante + painel inferior no celular */
@@ -518,7 +529,7 @@ fieldset.form-field legend { margin-bottom: 0.35rem; }
         border-radius: var(--radius); box-shadow: var(--shadow); z-index: 1;
     }
 
-    .product-grid, .catalog-grid { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 1rem; }
+    .product-grid, .catalog-grid { grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 1.1rem; }
     .category-panel-header { padding: 0.85rem 1rem; }
     .category-panel-content { padding: 0.25rem 1rem 1rem; }
     .modal { margin: auto; width: calc(100% - 2rem); border-radius: 1rem; }

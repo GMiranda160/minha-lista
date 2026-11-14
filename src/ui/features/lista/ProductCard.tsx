@@ -34,10 +34,10 @@ export function ProductCard(
                 aria-label={`${product.selected ? 'Remover' : 'Adicionar'} ${product.name}`}
             />
             <span className="card-check" aria-hidden><Check size={16} /></span>
-            {(recommended && established) || recent ? (
+            {recommended || recent ? (
                 <div className="card-badges">
-                    {recommended && established && <span className="badge badge-rec"><Star size={12} /> Recomendado</span>}
-                    {recent && <span className="badge badge-recent"><ShoppingCart size={12} /> Recente</span>}
+                    {recommended && <span className="badge badge-rec" title="Recomendado"><Star size={14} /><span className="sr-only">Recomendado</span></span>}
+                    {recent && <span className="badge badge-recent" title="Comprado na última lista"><ShoppingCart size={14} /><span className="sr-only">Recente</span></span>}
                 </div>
             ) : null}
             {!product.imageUrl && <span className="card-placeholder" aria-hidden><ShoppingBasket size={34} /></span>}
