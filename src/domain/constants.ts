@@ -59,3 +59,8 @@ export const SCORE_WEIGHTS = {
     seasonal: 0.10,
     consistencyBonus: 0.10,
 };
+
+/* Recomendações com IA */
+export const AI_MAX_CANDIDATES = 200;
+export const AI_MAX_QUANTITY = 99;
+export const AI_REASON_MAX = 120;

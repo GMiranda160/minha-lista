@@ -7,7 +7,8 @@ import { DEFAULT_CATEGORIES } from '@/domain/constants';
 import { clearSelection, groupCatalog, groupVisibleProducts, setQuantity, toggleSelection } from '@/domain/list';
 import { cycleLabel, createDefaultPattern } from '@/domain/pattern';
 import { buildPrintDocument } from '@/domain/print';
-import { generateRecommendations } from '@/domain/recommendations';
+import { parseAiPicks, resolveAiPicks } from '@/domain/recommendationAi';
+import { applyRecommendations, generateRecommendations } from '@/domain/recommendations';
 import { normalizeProduct } from '@/domain/state';
 import type { AppState, Product } from '@/domain/types';
 
@@ -90,6 +91,16 @@ describe('ciclos', () => {
         const names = [...established, ...learning].map(r => r.product.name);
         expect(names).toContain('Arroz');
         expect(established.find(r => r.product.name === 'Arroz')?.recommendedQty).toBe(2);
+    });
+
+    it('não recomenda produto oculto nem o seleciona ao aplicar', () => {
+        const base = simulate(8);
+        const hidden = { ...base, products: base.products.map(p => (p.id === 1 ? { ...p, visible: false } : p)) };
+        const names = Object.values(generateRecommendations(hidden, NOW)).flat().map(r => r.product.name);
+        expect(names).not.toContain('Arroz');
+
+        const picks = [{ product: hidden.products[0], recommendedQty: 2 }];
+        expect(applyRecommendations(hidden, picks).products[0].selected).toBe(false);
     });
 
     it('descreve o intervalo arredondado', () => {
@@ -238,5 +249,35 @@ describe('categorias', () => {
         const restored = parseBackup(JSON.parse(JSON.stringify(createBackup(s, NOW))), NOW)!;
         expect(restored.categories).toHaveLength(6);
         expect(restored.products[0].category).toBe('Limpeza');
+    });
+});
+
+describe('recomendações com IA', () => {
+    it('valida a resposta do Gemini e descarta itens malformados', () => {
+        const text = JSON.stringify({ itens: [
+            { id: 1, quantidade: 500, motivo: ' compra toda lista ' },
+            { id: 'x', quantidade: 1, motivo: 'id inválido' },
+            { id: 2, quantidade: 0, motivo: 3 },
+        ] });
+        expect(parseAiPicks(text)).toEqual([
+            { productId: 1, quantity: 99, reason: 'compra toda lista' },
+            { productId: 2, quantity: 1, reason: '' },
+        ]);
+        expect(() => parseAiPicks('não é json')).toThrow();
+        expect(() => parseAiPicks('{}')).toThrow();
+    });
+
+    it('resolve as escolhas ignorando ids inexistentes, ocultos e repetidos', () => {
+        const base = simulate(8);
+        const s = { ...base, products: base.products.map(p => (p.id === 3 ? { ...p, visible: false } : p)) };
+        const groups = resolveAiPicks(s, [
+            { productId: 1, quantity: 3, reason: 'acaba rápido' },
+            { productId: 1, quantity: 9, reason: 'repetido' },
+            { productId: 3, quantity: 1, reason: 'oculto' },
+            { productId: 99, quantity: 1, reason: 'inexistente' },
+        ], NOW);
+        const all = [...groups.established, ...groups.learning];
+        expect(all.map(r => r.product.id)).toEqual([1]);
+        expect(all[0]).toMatchObject({ recommendedQty: 3, context: 'acaba rápido' });
     });
 });

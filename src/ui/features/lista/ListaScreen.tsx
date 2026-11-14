@@ -73,7 +73,7 @@ export function ListaScreen() {
                         >
                             <ChartColumn size={18} />
                         </button>
-                        <button type="button" className="tool-btn rec" onClick={() => setDialog('recommendations')} title="Ver recomendações">
+                        <button type="button" className="tool-btn rec" onClick={() => setDialog('recommendations')} title="Gerar recomendações">
                             <WandSparkles size={18} /> <span className="hide-sm">Recomendações</span>
                         </button>
                     </div>
@@ -116,7 +116,7 @@ export function ListaScreen() {
             {dialog === 'recommendations' && (
                 <RecommendationModal
                     state={state}
-                    onApply={scope => { store.apply(s => applyRecommendations(s, scope)); setDialog('none'); }}
+                    onApply={chosen => { store.apply(s => applyRecommendations(s, chosen)); setDialog('none'); }}
                     onClose={() => setDialog('none')}
                 />
             )}

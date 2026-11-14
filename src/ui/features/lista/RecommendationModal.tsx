@@ -1,22 +1,47 @@
 'use client';
 
-import { ChartColumn, CircleCheck, ClipboardCheck, Hourglass, ListChecks, WandSparkles } from 'lucide-react';
+import {
+    ChartColumn, CircleCheck, ClipboardCheck, Hourglass, ListChecks, LoaderCircle, Sparkles, TriangleAlert, WandSparkles,
+} from 'lucide-react';
+import { useState } from 'react';
 import { categoryOf } from '@/domain/categories';
 import { MIN_LISTS_FOR_RECOMMENDATION } from '@/domain/constants';
-import { generateRecommendations, hasEnoughData, type Recommendation } from '@/domain/recommendations';
+import { resolveAiPicks } from '@/domain/recommendationAi';
+import {
+    generateRecommendations, hasEnoughData, type Recommendation, type RecommendationGroups,
+} from '@/domain/recommendations';
 import type { AppState } from '@/domain/types';
+import { requestAiRecommendations } from '@/services/recommendationActions';
 import { CategoryIcon } from '@/ui/components/CategoryIcon';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { Modal } from '@/ui/components/Modal';
 
 interface RecommendationModalProps {
     state: AppState;
-    onApply: (scope: 'established' | 'all') => void;
+    onApply: (chosen: Recommendation[]) => void;
     onClose: () => void;
 }
 
+type Phase =
+    | { name: 'idle' }
+    | { name: 'loading' }
+    | { name: 'error'; message: string }
+    | { name: 'done'; groups: RecommendationGroups };
+
 export function RecommendationModal({ state, onApply, onClose }: RecommendationModalProps) {
+    const [phase, setPhase] = useState<Phase>({ name: 'idle' });
     const title = <><WandSparkles size={18} /> Lista recomendada</>;
+
+    /* A única chamada ao Gemini acontece aqui, e só por clique. */
+    async function generate() {
+        setPhase({ name: 'loading' });
+        const result = await requestAiRecommendations();
+        setPhase(result.ok
+            ? { name: 'done', groups: resolveAiPicks(state, result.data) }
+            : { name: 'error', message: result.error });
+    }
+
+    const useLocal = () => setPhase({ name: 'done', groups: generateRecommendations(state) });
 
     if (!hasEnoughData(state)) {
         return (
@@ -28,7 +53,45 @@ export function RecommendationModal({ state, onApply, onClose }: RecommendationM
         );
     }
 
-    const { established, learning } = generateRecommendations(state);
+    if (phase.name === 'idle' || phase.name === 'loading') {
+        const loading = phase.name === 'loading';
+        return (
+            <Modal
+                title={title}
+                onClose={onClose}
+                footer={
+                    <button type="button" className="btn btn-rec" onClick={generate} disabled={loading}>
+                        {loading
+                            ? <><LoaderCircle size={16} className="spin" /> Consultando o Gemini...</>
+                            : <><Sparkles size={16} /> Gerar recomendações</>}
+                    </button>
+                }
+            >
+                <EmptyState icon={Sparkles} title="Recomendar a próxima lista com IA">
+                    O Gemini analisa o histórico das suas {state.totalCycles} listas e sugere o que comprar e em que quantidade.
+                </EmptyState>
+            </Modal>
+        );
+    }
+
+    if (phase.name === 'error') {
+        return (
+            <Modal
+                title={title}
+                onClose={onClose}
+                footer={
+                    <>
+                        <button type="button" className="btn btn-outline" onClick={useLocal}>Usar cálculo local</button>
+                        <button type="button" className="btn btn-rec" onClick={generate}>Tentar de novo</button>
+                    </>
+                }
+            >
+                <EmptyState icon={TriangleAlert} title="Não foi possível gerar com IA.">{phase.message}</EmptyState>
+            </Modal>
+        );
+    }
+
+    const { established, learning } = phase.groups;
     if (established.length + learning.length === 0) {
         return (
             <Modal title={title} onClose={onClose}>
@@ -46,10 +109,10 @@ export function RecommendationModal({ state, onApply, onClose }: RecommendationM
             size="lg"
             footer={
                 <>
-                    <button type="button" className="btn btn-outline" onClick={() => onApply('established')} disabled={established.length === 0}>
+                    <button type="button" className="btn btn-outline" onClick={() => onApply(established)} disabled={established.length === 0}>
                         <CircleCheck size={16} /> Apenas garantidos
                     </button>
-                    <button type="button" className="btn btn-rec" onClick={() => onApply('all')}>
+                    <button type="button" className="btn btn-rec" onClick={() => onApply([...established, ...learning])}>
                         <ListChecks size={16} /> Lista completa
                     </button>
                 </>

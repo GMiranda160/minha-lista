@@ -9,7 +9,12 @@ next-env.d.ts
 
 # variáveis de ambiente (nunca versionar chaves)
 .env
+.env.*
 .env*.local
+!.env.example
+
+# senhas locais
+supabase/password
 
 # Vercel
 .vercel

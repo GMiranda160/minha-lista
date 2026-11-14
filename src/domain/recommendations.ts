@@ -43,7 +43,17 @@ function recentMedianQuantity(product: Product): number {
     return recent.length % 2 ? recent[mid] : (recent[mid - 1] + recent[mid]) / 2;
 }
 
-function describe(product: Product, totalCycles: number): string {
+/** Quantidade sugerida: mediana das últimas compras, ou a média histórica. */
+export function suggestedQuantity(product: Product): number {
+    const median = recentMedianQuantity(product);
+    return Math.max(1, Math.round(median > 0 ? median : product.pattern.avgQuantity));
+}
+
+/** Padrão consolidado e sem quebra recente. */
+export const isEstablished = (product: Product) =>
+    product.pattern.confidencePhase === 'established' && !product.pattern.patternBroken;
+
+export function describeRecommendation(product: Product, totalCycles: number): string {
     const pp = product.pattern;
     const parts: string[] = [];
 
@@ -73,38 +83,42 @@ function describe(product: Product, totalCycles: number): string {
     return parts.slice(0, 3).join(' · ');
 }
 
+const byScore = (a: Recommendation, b: Recommendation) => b.score - a.score;
+
+/** Separa em garantidos e em aprendizado, cada grupo do maior para o menor score. */
+export function groupRecommendations(recommendations: Recommendation[]): RecommendationGroups {
+    const established = recommendations.filter(r => isEstablished(r.product)).sort(byScore);
+    const learning = recommendations.filter(r => !isEstablished(r.product)).sort(byScore);
+    return { established, learning };
+}
+
+/** Cálculo local (sem rede): serve de base para o Gemini e de plano B se ele falhar. */
 export function generateRecommendations(state: AppState, now = new Date()): RecommendationGroups {
     const ctx = scoreContext(state, now);
-    const established: Recommendation[] = [];
-    const learning: Recommendation[] = [];
+    const chosen: Recommendation[] = [];
 
     state.products.forEach(product => {
         const pp = product.pattern;
-        if (pp.totalLists < 1) return;
+        if (!product.visible || pp.totalLists < 1) return;
 
         const score = calculateScore(product, ctx);
         if (score < RECOMMENDATION_THRESHOLD) return;
 
-        const median = recentMedianQuantity(product);
-        const recommendation: Recommendation = {
-            product,
-            score,
-            context: describe(product, state.totalCycles),
-            recommendedQty: Math.max(1, Math.round(median > 0 ? median : pp.avgQuantity)),
-        };
-
-        if (pp.confidencePhase === 'established' && !pp.patternBroken) {
+        if (isEstablished(product)) {
             const cyclesSince = state.totalCycles - pp.lastPurchaseListIndex;
             const dueThreshold = pp.avgIntervalCycles > 1 ? Math.round(pp.avgIntervalCycles * 0.7) : 0;
             if (cyclesSince < dueThreshold) return;
-            established.push(recommendation);
-        } else {
-            learning.push(recommendation);
         }
+
+        chosen.push({
+            product,
+            score,
+            context: describeRecommendation(product, state.totalCycles),
+            recommendedQty: suggestedQuantity(product),
+        });
     });
 
-    const byScore = (a: Recommendation, b: Recommendation) => b.score - a.score;
-    return { established: established.sort(byScore), learning: learning.sort(byScore) };
+    return groupRecommendations(chosen);
 }
 
 /** Ids dos produtos recomendados (vazio enquanto não há listas suficientes). */
@@ -114,15 +128,12 @@ export function recommendedIds(state: AppState, now = new Date()): Set<number> {
     return new Set([...established, ...learning].map(r => r.product.id));
 }
 
-/** Substitui a seleção atual pelas recomendações. */
-export function applyRecommendations(state: AppState, scope: 'established' | 'all', now = new Date()): AppState {
-    const { established, learning } = generateRecommendations(state, now);
-    const chosen = new Map(
-        (scope === 'all' ? [...established, ...learning] : established).map(r => [r.product.id, r.recommendedQty]),
-    );
+/** Substitui a seleção atual pelas recomendações recebidas (só produtos visíveis). */
+export function applyRecommendations(state: AppState, recommendations: Pick<Recommendation, 'product' | 'recommendedQty'>[]): AppState {
+    const chosen = new Map(recommendations.map(r => [r.product.id, r.recommendedQty]));
     return produce(state, draft => {
         draft.products.forEach(product => {
-            const quantity = chosen.get(product.id);
+            const quantity = product.visible ? chosen.get(product.id) : undefined;
             product.selected = quantity !== undefined;
             product.quantity = quantity ?? 1;
         });
